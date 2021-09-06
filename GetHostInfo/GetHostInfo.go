@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	osnet "net"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -18,6 +19,7 @@ import (
 
 type os_info_type struct {
 	BootTime            uint64 `json:"boot_time" label:"启动"`
+	Network             string `json:"network" lable:"联网"`
 	OsType              string `json:"os_type" label:"系统类别"`
 	OsName              string `json:"os_name" label:"操作系统"`
 	PlatformFamily      string `json:"platform_family" label:"Family"`
@@ -83,6 +85,14 @@ type host_info_type struct {
 }
 
 func get_os_info(host_info *host_info_type) {
+	// 是否可联网
+	_, err := osnet.DialTimeout("tcp", "114.114.114.114:53", 2*time.Second)
+	if err != nil {
+		host_info.OsInfo.Network = "不可联网"
+	} else {
+		host_info.OsInfo.Network = "可联网"
+	}
+
 	// 获取操作系统版本
 	var os_name, platform_family string
 	filepath := "/etc/os-release"
@@ -315,10 +325,10 @@ func format_print(host_info host_info_type) {
 	port_info := host_info.PortInfo
 
 	os_output := fmt.Sprintf(
-		"%s: %s(%s%s)\n"+
+		"%s: %s(%s%s, %s)\n"+
 			"  %s: %s\t%s: %s\t%s: %s\n"+
 			"  %s: %s\t%s: %s\t%s: %s\n",
-		get_label(host_info, "HostName"), host_info.HostName, time.Unix(int64(os_info.BootTime), 0).Local().Format("2006-01-02 15:04:05"), get_label(os_info, "BootTime"),
+		get_label(host_info, "HostName"), host_info.HostName, time.Unix(int64(os_info.BootTime), 0).Local().Format("2006-01-02 15:04:05"), get_label(os_info, "BootTime"), os_info.Network,
 		get_label(os_info, "OsType"), os_info.OsType, get_label(os_info, "PlatformFamily"), os_info.PlatformFamily, get_label(os_info, "OsName"), os_info.OsName,
 		get_label(os_info, "KernelVersion"), os_info.KernelVersion, get_label(os_info, "PkgManagementSystem"), os_info.PkgManagementSystem, get_label(os_info, "PhysicalMachine"), os_info.PhysicalMachine,
 	)
@@ -392,5 +402,4 @@ func main() {
 
 	//host_info_json, _ := json.MarshalIndent(host_info, "", "    ")
 	//fmt.Printf("host info: %s\n", string(host_info_json))
-
 }
