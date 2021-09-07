@@ -26,6 +26,7 @@ type os_info_type struct {
 	KernelVersion       string `json:"kernel_version" label:"内核版本"`
 	PhysicalMachine     string `json:"physical_machine" label:"角色"`
 	PkgManagementSystem string `json:"pkg_management_system" label:"包管理系统"`
+	GlibcVersion        string `json:"glibc_ver" label:"GLIBC版本"`
 }
 
 type user_info_type struct {
@@ -92,6 +93,16 @@ func get_os_info(host_info *host_info_type) {
 	} else {
 		host_info.OsInfo.Network = "可联网"
 	}
+
+	// 获取glibc版本
+	glibc_ver := "未知"
+	cmd_info := exec.Command("getconf", "GNU_LIBC_VERSION")
+	ver, err := cmd_info.Output()
+	if err == nil {
+		output_array := strings.Split(string(ver), " ")
+		glibc_ver = strings.Trim(output_array[len(output_array)-1], "\n")
+	}
+	host_info.OsInfo.GlibcVersion = glibc_ver
 
 	// 获取操作系统版本
 	var os_name, platform_family string
@@ -247,6 +258,7 @@ func get_disk_info(host_info *host_info_type) {
 			if err != nil {
 				fmt.Printf("disk usage info get error: %s\n", err)
 			} else {
+				disks[i].MountPoint = disk_info.Path
 				disks[i].Total = disk_info.Total
 				disks[i].Used = disk_info.Used
 				disks[i].Free = disk_info.Free
@@ -274,7 +286,7 @@ func get_net_info(host_info *host_info_type) {
 }
 
 func get_port_info(host_info *host_info_type) {
-	ports_info, err := net.Connections("inet")
+	ports_info, err := net.Connections("inet4")
 	if err != nil {
 		fmt.Printf("net info get error: %s\n", err)
 	} else {
@@ -327,10 +339,12 @@ func format_print(host_info host_info_type) {
 	os_output := fmt.Sprintf(
 		"%s: %s(%s%s, %s)\n"+
 			"  %s: %s\t%s: %s\t%s: %s\n"+
-			"  %s: %s\t%s: %s\t%s: %s\n",
+			"  %s: %s\t%s: %s\n"+
+			"  %s: %s\t%s: %s\n",
 		get_label(host_info, "HostName"), host_info.HostName, time.Unix(int64(os_info.BootTime), 0).Local().Format("2006-01-02 15:04:05"), get_label(os_info, "BootTime"), os_info.Network,
 		get_label(os_info, "OsType"), os_info.OsType, get_label(os_info, "PlatformFamily"), os_info.PlatformFamily, get_label(os_info, "OsName"), os_info.OsName,
 		get_label(os_info, "KernelVersion"), os_info.KernelVersion, get_label(os_info, "PkgManagementSystem"), os_info.PkgManagementSystem, get_label(os_info, "PhysicalMachine"), os_info.PhysicalMachine,
+		get_label(os_info, "GlibcVersion"), os_info.GlibcVersion,
 	)
 
 	cpu_output := fmt.Sprintf(
