@@ -286,7 +286,7 @@ func get_net_info(host_info *host_info_type) {
 }
 
 func get_port_info(host_info *host_info_type) {
-	ports_info, err := net.Connections("inet4")
+	ports_info, err := net.Connections("inet")
 	if err != nil {
 		fmt.Printf("net info get error: %s\n", err)
 	} else {
@@ -296,10 +296,20 @@ func get_port_info(host_info *host_info_type) {
 				port_info.Pid = v.Pid
 				port_info.Port = v.Laddr.Port
 				port_info.IP = v.Laddr.IP
-				p, _ := process.NewProcess(v.Pid)
-				port_info.Command, _ = p.Cmdline()
-				port_info.Name, _ = p.Name()
-				host_info.PortInfo = append(host_info.PortInfo, port_info)
+				port_exist := 0
+				for i, v1 := range host_info.PortInfo {
+					if port_info.Port == v1.Port {
+						host_info.PortInfo[i].IP = host_info.PortInfo[i].IP + "/" + port_info.IP
+						port_exist = 1
+						break
+					}
+				}
+				if port_exist == 0 {
+					p, _ := process.NewProcess(v.Pid)
+					port_info.Command, _ = p.Cmdline()
+					port_info.Name, _ = p.Name()
+					host_info.PortInfo = append(host_info.PortInfo, port_info)
+				}
 			}
 		}
 	}
