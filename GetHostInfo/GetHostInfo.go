@@ -264,7 +264,6 @@ func get_disk_info(host_info *host_info_type) {
 		disks := make([]disk_info_type, disk_num)
 		for i, v := range partition_info {
 			disks[i].Device = v.Device
-			disks[i].MountPoint = v.Mountpoint
 			disks[i].Fstype = v.Fstype
 			disk_info, err := disk.Usage(v.Mountpoint)
 			if err != nil {
@@ -274,6 +273,23 @@ func get_disk_info(host_info *host_info_type) {
 				disks[i].Total = disk_info.Total
 				disks[i].Used = disk_info.Used
 				disks[i].Free = disk_info.Free
+			}
+		}
+		// 添加网络挂载存储
+		partition_info_all, _ := disk.Partitions(true)
+		var temp_disk disk_info_type
+		for _, v := range partition_info_all {
+			if strings.Contains(v.Fstype, "fuse.") {
+				disk_info, _ := disk.Usage(v.Mountpoint)
+				if disk_info.Total != 0 {
+					temp_disk.Device = v.Device
+					temp_disk.Fstype = v.Fstype
+					temp_disk.MountPoint = disk_info.Path
+					temp_disk.Total = disk_info.Total
+					temp_disk.Used = disk_info.Used
+					temp_disk.Free = disk_info.Free
+					disks = append(disks, temp_disk)
+				}
 			}
 		}
 		host_info.DiskInfo = disks
