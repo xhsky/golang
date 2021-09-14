@@ -161,17 +161,29 @@ func get_os_info(host_info *host_info_type) {
 
 	// 判断是物理机还是虚拟机
 	physical_machine := "未知"
-	virtual_flag := "virtual"
-	for _, v := range [...]string{"dmidecode -s system-product-name", "lshw -class system | grep product"} {
-		cmd_info := exec.Command("sudo", "bash", "-c", v)
-		output, err := cmd_info.Output()
-		if err == nil {
-			if strings.Contains(strings.ToLower(string(output)), virtual_flag) {
-				physical_machine = "虚拟机"
-			} else {
-				physical_machine = "物理机"
+	/*
+		virtual_flag := "virtual"
+		for _, v := range [...]string{"dmidecode -s system-product-name", "lshw -class system | grep product"} {
+			cmd_info := exec.Command("sudo", "bash", "-c", v)
+			output, err := cmd_info.Output()
+			if err == nil {
+				if strings.Contains(strings.ToLower(string(output)), virtual_flag) {
+					physical_machine = "虚拟机"
+				} else {
+					physical_machine = "物理机"
+				}
+				break
 			}
-			break
+		}
+	*/
+	cmd_info = exec.Command("sudo", "systemd-detect-virt")
+	output, err := cmd_info.Output()
+	if err == nil {
+		output_str := string(output)
+		if strings.ToLower(output_str) == "none" {
+			physical_machine = "物理机"
+		} else {
+			physical_machine = strings.Trim(output_str, "\n")
 		}
 	}
 	if physical_machine == "未知" {
