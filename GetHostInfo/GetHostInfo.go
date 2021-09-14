@@ -109,7 +109,6 @@ func get_os_info(host_info *host_info_type) {
 	filepath := "/etc/os-release"
 	context, err := ioutil.ReadFile(filepath)
 	if err == nil {
-		//fmt.Printf("context: %s", context)
 		context_slice := strings.Split(string(context), "\n")
 		for _, v := range context_slice {
 			if strings.Contains(strings.ToLower(v), "pretty_name") {
@@ -125,7 +124,7 @@ func get_os_info(host_info *host_info_type) {
 	// 获取主机信息
 	os_info, err := host.Info()
 	if err != nil {
-		fmt.Printf("os info get error: %s\n", err)
+		fmt.Printf("Error: os info get error: %s\n", err)
 	} else {
 		host_info.HostName = os_info.Hostname
 		host_info.OsInfo.BootTime = os_info.BootTime
@@ -199,7 +198,7 @@ func get_os_info(host_info *host_info_type) {
 func get_user_info(host_info *host_info_type) {
 	user_info, err := host.Users()
 	if err != nil {
-		fmt.Printf("user info get error: %s\n", err)
+		fmt.Printf("Error: user info get error: %s\n", err)
 	} else {
 		//fmt.Printf("user info: %v\n", user_info)
 		user_num := len(user_info)
@@ -219,13 +218,13 @@ func get_user_info(host_info *host_info_type) {
 func get_cpu_info(host_info *host_info_type) {
 	cpu_info, err := cpu.Info()
 	if err != nil {
-		fmt.Printf("cpu info get error: %s\n", err)
+		fmt.Printf("Error: cpu info get error: %s\n", err)
 	} else {
 		host_info.CpuInfo.CpuNum = len(cpu_info)
 		host_info.CpuInfo.CpuModelName = cpu_info[0].ModelName
 		cpu_used_percent, err := cpu.Percent(2*time.Second, false)
 		if err != nil {
-			fmt.Printf("cpu used percent err: %s\n", err)
+			fmt.Printf("Error: cpu used percent err: %s\n", err)
 			host_info.CpuInfo.CpuUsedPercent = -1
 		} else {
 			host_info.CpuInfo.CpuUsedPercent = cpu_used_percent[0]
@@ -238,7 +237,7 @@ func get_cpu_info(host_info *host_info_type) {
 func get_mem_info(host_info *host_info_type) {
 	mem_info, err := mem.VirtualMemory()
 	if err != nil {
-		fmt.Printf("mem info get error: %s\n", err)
+		fmt.Printf("Error: mem info get error: %s\n", err)
 	} else {
 		host_info.MemInfo.MemTotal = mem_info.Total
 		host_info.MemInfo.MemUsed = mem_info.Used
@@ -248,7 +247,7 @@ func get_mem_info(host_info *host_info_type) {
 	}
 	swap_info, err := mem.SwapMemory()
 	if err != nil {
-		fmt.Printf("swap info get error: %s\n", err)
+		fmt.Printf("Error: swap info get error: %s\n", err)
 	} else {
 		host_info.MemInfo.SwapTotal = swap_info.Total
 		host_info.MemInfo.SwapUsed = swap_info.Used
@@ -258,7 +257,7 @@ func get_mem_info(host_info *host_info_type) {
 func get_disk_info(host_info *host_info_type) {
 	partition_info, err := disk.Partitions(false)
 	if err != nil {
-		fmt.Printf("disk partition info get error: %s\n", err)
+		fmt.Printf("Error: disk partition info get error: %s\n", err)
 	} else {
 		disk_num := len(partition_info)
 		disks := make([]disk_info_type, disk_num)
@@ -267,7 +266,7 @@ func get_disk_info(host_info *host_info_type) {
 			disks[i].Fstype = v.Fstype
 			disk_info, err := disk.Usage(v.Mountpoint)
 			if err != nil {
-				fmt.Printf("disk usage info get error: %s\n", err)
+				fmt.Printf("Error: %s info get error: %s\n", v.Mountpoint, err)
 			} else {
 				disks[i].MountPoint = disk_info.Path
 				disks[i].Total = disk_info.Total
@@ -276,19 +275,27 @@ func get_disk_info(host_info *host_info_type) {
 			}
 		}
 		// 添加网络挂载存储
-		partition_info_all, _ := disk.Partitions(true)
-		var temp_disk disk_info_type
-		for _, v := range partition_info_all {
-			if strings.Contains(v.Fstype, "fuse.") {
-				disk_info, _ := disk.Usage(v.Mountpoint)
-				if disk_info.Total != 0 {
-					temp_disk.Device = v.Device
-					temp_disk.Fstype = v.Fstype
-					temp_disk.MountPoint = disk_info.Path
-					temp_disk.Total = disk_info.Total
-					temp_disk.Used = disk_info.Used
-					temp_disk.Free = disk_info.Free
-					disks = append(disks, temp_disk)
+		partition_info_all, err := disk.Partitions(true)
+		if err != nil {
+			fmt.Printf("Error: disk partition info get error: %s\n", err)
+		} else {
+			var temp_disk disk_info_type
+			for _, v := range partition_info_all {
+				if strings.Contains(v.Fstype, "fuse.") {
+					disk_info, err := disk.Usage(v.Mountpoint)
+					if err != nil {
+						fmt.Printf("Error: %s info get error: %s\n", v.Mountpoint, err)
+					} else {
+						if disk_info.Total != 0 {
+							temp_disk.Device = v.Device
+							temp_disk.Fstype = v.Fstype
+							temp_disk.MountPoint = disk_info.Path
+							temp_disk.Total = disk_info.Total
+							temp_disk.Used = disk_info.Used
+							temp_disk.Free = disk_info.Free
+							disks = append(disks, temp_disk)
+						}
+					}
 				}
 			}
 		}
@@ -299,7 +306,7 @@ func get_disk_info(host_info *host_info_type) {
 func get_net_info(host_info *host_info_type) {
 	net_info, err := net.Interfaces()
 	if err != nil {
-		fmt.Printf("net info get error: %s\n", err)
+		fmt.Printf("Error: net info get error: %s\n", err)
 	} else {
 		net_num := len(net_info)
 		nets := make([]net_info_type, net_num)
@@ -316,7 +323,7 @@ func get_net_info(host_info *host_info_type) {
 func get_port_info(host_info *host_info_type) {
 	ports_info, err := net.Connections("inet")
 	if err != nil {
-		fmt.Printf("net info get error: %s\n", err)
+		fmt.Printf("Error: port info get error: %s\n", err)
 	} else {
 		var port_info port_info_type
 		for _, v := range ports_info {
