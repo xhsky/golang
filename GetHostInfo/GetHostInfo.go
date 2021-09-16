@@ -26,6 +26,7 @@ type os_info_type struct {
 	KernelVersion       string `json:"kernel_version" label:"内核版本"`
 	PhysicalMachine     string `json:"physical_machine" label:"角色"`
 	PkgManagementSystem string `json:"pkg_management_system" label:"包管理系统"`
+	PkgRepoList         string `json:"pkg_repo_list" label:"源列表信息"`
 	GlibcVersion        string `json:"glibc_ver" label:"GLIBC版本"`
 }
 
@@ -149,14 +150,26 @@ func get_os_info(host_info *host_info_type) {
 
 	// 获取包管理方式
 	pkg_management_system := ""
+	pkg_management_repolist_command := "无"
 	for _, v := range [...]string{"apt", "yum"} {
 		cmd_info := exec.Command("which", v)
 		_, err := cmd_info.Output()
 		if err == nil {
-			pkg_management_system += v
+			pkg_management_system = v
+			if pkg_management_system == "apt" {
+				pkg_management_repolist_command = "apt update"
+			} else if pkg_management_system == "yum" {
+				pkg_management_repolist_command = "yum clean all && yum repolist"
+			}
+			break
 		}
 	}
 	host_info.OsInfo.PkgManagementSystem = pkg_management_system
+	if pkg_management_system != "" {
+		cmd_info = exec.Command("sudo", "bash", "-c", pkg_management_repolist_command)
+		put, _ := cmd_info.Output()
+		host_info.OsInfo.PkgRepoList = string(put)
+	}
 
 	// 判断是物理机还是虚拟机
 	physical_machine := "未知"
@@ -392,6 +405,11 @@ func format_print(host_info host_info_type) {
 		get_label(os_info, "GlibcVersion"), os_info.GlibcVersion,
 	)
 
+	repo_output := fmt.Sprintf(
+		"%s:\n  %s",
+		get_label(os_info, "PkgRepoList"), strings.TrimRight(strings.Replace(os_info.PkgRepoList, "\n", "\n  ", -1), " "),
+	)
+
 	cpu_output := fmt.Sprintf(
 		"  %s: %s\t%s: %s\n"+
 			"  %s: %d\t%s: %.2f%%\n",
@@ -443,11 +461,12 @@ func format_print(host_info host_info_type) {
 		)
 	}
 
-	output := os_output + cpu_output + mem_output + net_output + user_output + disk_output + port_output
+	output := os_output + cpu_output + mem_output + repo_output + net_output + user_output + disk_output + port_output
 	fmt.Printf("%s", output)
 }
 
 func main() {
+	fmt.Println("获取主机信息中, 请稍后...")
 	host_info := host_info_type{}
 
 	get_os_info(&host_info)
