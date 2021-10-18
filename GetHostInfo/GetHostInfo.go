@@ -24,7 +24,7 @@ type os_info_type struct {
 	OsName              string `json:"os_name" label:"操作系统"`
 	PlatformFamily      string `json:"platform_family" label:"Family"`
 	KernelVersion       string `json:"kernel_version" label:"内核版本"`
-	PhysicalMachine     string `json:"physical_machine" label:"角色"`
+	PhysicalMachine     string `json:"physical_machine" label:"虚拟化平台"`
 	PkgManagementSystem string `json:"pkg_management_system" label:"包管理系统"`
 	PkgRepoList         string `json:"pkg_repo_list" label:"源列表信息"`
 	GlibcVersion        string `json:"glibc_ver" label:"GLIBC版本"`
@@ -190,12 +190,12 @@ func get_os_info(host_info *host_info_type) {
 	*/
 	cmd_info = exec.Command("sudo", "systemd-detect-virt")
 	output, err := cmd_info.Output()
-	if err == nil {
-		output_str := string(output)
-		if strings.ToLower(output_str) == "none" {
-			physical_machine = "物理机"
-		} else {
-			physical_machine = strings.Trim(output_str, "\n")
+	output_str := strings.Trim(string(output), "\n")
+	if strings.ToLower(output_str) == "none" {
+		physical_machine = "物理机"
+	} else {
+		if err == nil {
+			physical_machine = output_str
 		}
 	}
 	if physical_machine == "未知" {
